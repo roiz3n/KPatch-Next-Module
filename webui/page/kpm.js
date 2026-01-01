@@ -1,5 +1,21 @@
 import { exec, toast } from 'kernelsu-alt';
-import { modDir, superkey } from '../index.js';
+import { modDir, persistDir, superkey } from '../index.js';
+
+async function getKpmInfo(path) {
+    const result = await exec(`kptools -l -M ${path}`, { env: { PATH: `${modDir}/bin` } });
+    if (import.meta.env.DEV) { // vite debug
+        result.stdout = 'name=Test Module\nversion=1.0.0\ndescription=This is a test module\nauthor=KOWX712\nlicense=MIT\nargs=test';
+    }
+    const infoLines = result.stdout.trim().split('\n');
+
+    const moduleInfo = {};
+    infoLines.forEach(line => {
+        const [key, ...valueParts] = line.split('=');
+        moduleInfo[key] = valueParts.join('=');
+    });
+
+    return moduleInfo;
+}
 
 async function getKpmList() {
     if (import.meta.env.DEV) { // vite debug
@@ -24,7 +40,7 @@ async function getKpmList() {
     }
 
     const listResult = await exec(`kpatch ${superkey} kpm list`, { env: { PATH: `${modDir}/bin` } });
-    const modules = listResult.stdout.trim().split('\n').filter(line => line.trim());
+    const modules = listResult.stdout.trim().split('\n').filter(line => line.trim()).sort();
 
     const modulePromises = modules.map(async (moduleName) => {
         const infoResult = await exec(`kpatch ${superkey} kpm info ${moduleName}`, { env: { PATH: `${modDir}/bin` } });
@@ -47,8 +63,13 @@ async function controlModule(moduleName, action) {
     toast(result.errno === 0 ? result.stdout : result.stderr);
 }
 
+function forgetModule(moduleName) {
+    exec(`rm -f ${persistDir}/kpm/${moduleName}.kpm`, { env: { PATH: `${modDir}/bin` } });
+}
+
 async function unloadModule(moduleName) {
-    const result = await exec(`kpatch ${superkey} kpm unload ${moduleName}`, { env: { PATH: `${modDir}/bin` } });
+    forgetModule(moduleName);
+    const result = await exec(`kpatch ${superkey} kpm unload ${moduleName}`,{ env: { PATH: `${modDir}/bin` } });
     return result.errno === 0;
 }
 
@@ -131,20 +152,35 @@ async function uploadAndLoadModule() {
             const base64 = reader.result.split(',')[1];
 
             try {
-                const result = await exec(`mkdir -p ${modDir}/kpm && echo '${base64}' | base64 -d > ${modDir}/kpm/${file.name}`);
+                const result = await exec(`
+                    mkdir -p ${modDir}/tmp
+                    rm -rf ${modDir}/tmp/*
+                    echo '${base64}' | base64 -d > ${modDir}/tmp/${file.name}
+                `);
                 if (result.errno !== 0) {
                     toast(`Failed to write file: ${result.stderr}`);
                     return;
                 }
 
-                const success = await loadModule(`${modDir}/kpm/${file.name}`);
+                const info = await getKpmInfo(`${modDir}/tmp/${file.name}`);
+                if (info && info.name) {
+                    exec(`
+                        mkdir -p ${persistDir}/kpm
+                        cp -f ${modDir}/tmp/${file.name} ${persistDir}/kpm/${info.name}.kpm
+                    `);
+                } else {
+                    toast(`Failed to get module info`);
+                    return;
+                }
+
+                const success = await loadModule(`${modDir}/tmp/${file.name}`);
                 if (success) {
                     toast(`Successfully loaded ${file.name}`);
                     refreshKpmList();
-                    exec(`rm -f ${modDir}/kpm/${file.name}`);
                 } else {
                     toast(`Failed to load module ${file.name}`);
                 }
+                exec(`rm -f ${modDir}/tmp`);
             } catch (e) {
                 toast(`Error: ${e.message}`);
             }

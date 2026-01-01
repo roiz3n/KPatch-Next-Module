@@ -5,6 +5,7 @@ import * as patchModule from './page/patch.js';
 import * as kpmModule from './page/kpm.js';
 
 export const modDir = '/data/adb/modules/KPatch-Next';
+export const persistDir = '/data/adb/kp-next';
 
 export let superkey = localStorage.getItem('kp-next_superkey') || '';
 
