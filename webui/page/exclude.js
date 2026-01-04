@@ -227,8 +227,13 @@ function initExcludePage() {
 
     systemAppCheckbox.addEventListener('change', () => {
         showSystemApp = systemAppCheckbox.checked;
+        localStorage.setItem('kp-next_show_system_app', showSystemApp);
         renderAppList();
     });
+    if (localStorage.getItem('kp-next_show_system_app') === 'true') {
+        showSystemApp = true;
+        systemAppCheckbox.checked = true;
+    }
 
     document.getElementById('refresh-app-list').onclick = () => {
         refreshAppList();
