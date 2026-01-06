@@ -42,7 +42,10 @@ async function getKpmList() {
         ];
     }
 
-    const listResult = await exec(`kpatch ${superkey} kpm list`, { env: { PATH: `${modDir}/bin` } });
+    const listResult = await exec(
+        `kpatch ${superkey} kpm list && sh "${modDir}/status.sh" "${superkey}"`,
+        { env: { PATH: `${modDir}/bin:$PATH` } }
+    );
     const modules = listResult.stdout.trim().split('\n').filter(line => line.trim());
 
     const modulePromises = modules.map(async (moduleName) => {
