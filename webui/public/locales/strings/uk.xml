@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- UI Labels -->
-    <string name="title_exclude">Виключити</string>
+    <string name="title_exclude">Винятки</string>
     <string name="title_settings">Налаштування</string>
     <string name="title_home">Головна</string>
     <string name="title_language">Мова</string>
